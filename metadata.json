@@ -1,0 +1,6 @@
+{
+  "name": "Custo de Vida",
+  "description": "Converta o preço de produtos e despesas em horas e dias da sua vida trabalhando, com análise de impacto financeiro, parcelamento e juros.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
