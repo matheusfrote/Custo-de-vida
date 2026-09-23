@@ -45,8 +45,10 @@ export const AuthModal: React.FC = () => {
         showToast('Login cancelado.');
       } else if (err?.code === 'auth/popup-blocked') {
         showToast('O pop-up de login foi bloqueado pelo navegador. Por favor, permita pop-ups.');
+      } else if (err?.code === 'auth/internal-error') {
+        showToast('Erro ao comunicar com o Google. Verifique se pop-ups estão permitidos ou entre usando e-mail.');
       } else {
-        showToast('Erro ao autenticar com o Google. Tente novamente.');
+        showToast(err?.message || 'Erro ao autenticar com o Google. Tente novamente.');
       }
     } finally {
       setIsLoading(false);
