@@ -142,6 +142,27 @@ enum class GoalType(val key: String, val label: String) {
     PURCHASE("PURCHASE", "Meta de Compra")
 }
 
+data class GoalEffortCalculation(
+    val goalAmount: Double,
+    val currentAmount: Double,
+    val remainingAmount: Double,
+    val monthlyContribution: Double,
+    val netSalary: Double,
+    val fixedLivingCosts: Double,
+    val freeMonthlyIncome: Double,
+    val fixedCostRatioPercent: Double,
+    val baseHourlyRate: Double,
+    val realFreeHourlyRate: Double,
+    val nominalWorkHours: Double,
+    val nominalWorkDays: Double,
+    val realWorkHours: Double,
+    val realWorkDays: Double,
+    val monthsRemaining: Double,
+    val monthsByFreeIncome: Double,
+    val isDeficit: Boolean,
+    val summaryText: String
+)
+
 data class SavingGoalItem(
     val id: Long = 0,
     val userId: Long = 1,
