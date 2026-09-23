@@ -2,6 +2,7 @@ package com.example.domain.engine
 
 import com.example.domain.model.CalculationResult
 import com.example.domain.model.FinancialProfileData
+import com.example.domain.model.GoalEffortCalculation
 import com.example.domain.model.InstallmentResult
 import com.example.domain.model.OpportunityCostResult
 import com.example.domain.model.RecurringCostResult
@@ -309,6 +310,81 @@ object FinancialEngine {
                 "${m}min de trabalho"
             }
         }
+    }
+
+    fun calculateGoalEffort(
+        goalAmount: Double,
+        currentAmount: Double,
+        monthlyContribution: Double,
+        profile: FinancialProfileData,
+        fixedLivingCosts: Double
+    ): GoalEffortCalculation {
+        val safeNetSalary = if (profile.netSalary > 0.0) profile.netSalary else 5000.0
+        val safeHoursPerMonth = if (profile.hoursPerMonth > 0.0) profile.hoursPerMonth else 176.0
+        val safeHoursPerDay = if (profile.hoursPerDay > 0.0) profile.hoursPerDay else 8.0
+
+        val baseHourlyRate = safeNetSalary / safeHoursPerMonth
+        val remainingAmount = (goalAmount - currentAmount).coerceAtLeast(0.0)
+
+        val freeMonthlyIncome = (safeNetSalary - fixedLivingCosts).coerceAtLeast(0.0)
+        val fixedCostRatioPercent = if (safeNetSalary > 0.0) (fixedLivingCosts / safeNetSalary) * 100.0 else 0.0
+        val isDeficit = fixedLivingCosts >= safeNetSalary
+
+        val realFreeHourlyRate = if (freeMonthlyIncome > 0.0) {
+            freeMonthlyIncome / safeHoursPerMonth
+        } else {
+            0.0
+        }
+
+        val nominalWorkHours = if (baseHourlyRate > 0.0) remainingAmount / baseHourlyRate else 0.0
+        val nominalWorkDays = if (safeHoursPerDay > 0.0) nominalWorkHours / safeHoursPerDay else 0.0
+
+        val realWorkHours = if (realFreeHourlyRate > 0.0) {
+            remainingAmount / realFreeHourlyRate
+        } else {
+            nominalWorkHours
+        }
+        val realWorkDays = if (safeHoursPerDay > 0.0) realWorkHours / safeHoursPerDay else 0.0
+
+        val effectiveContribution = if (monthlyContribution > 0.0) {
+            monthlyContribution
+        } else if (freeMonthlyIncome > 0.0) {
+            freeMonthlyIncome
+        } else {
+            1.0
+        }
+
+        val monthsRemaining = if (effectiveContribution > 0.0) remainingAmount / effectiveContribution else 0.0
+        val monthsByFreeIncome = if (freeMonthlyIncome > 0.0) remainingAmount / freeMonthlyIncome else 0.0
+
+        val summaryText = if (isDeficit) {
+            "Atenção: seus custos fixos (${formatCurrency(fixedLivingCosts)}) consom toda a sua renda. É necessário renegociar despesas essenciais para conseguir poupar para esta meta."
+        } else if (fixedLivingCosts > 0.0) {
+            "Considerando seus custos fixos de ${formatCurrency(fixedLivingCosts)} (${String.format(Locale.getDefault(), "%.0f", fixedCostRatioPercent)}% da renda), sobram ${formatCurrency(freeMonthlyIncome)}/mês (${formatCurrency(realFreeHourlyRate)}/h livre). Você precisará investir ${realWorkHours.roundToLong()}h reais (${String.format(Locale.getDefault(), "%.1f", realWorkDays)} dias úteis) e cerca de ${String.format(Locale.getDefault(), "%.1f", monthsRemaining)} meses de economia."
+        } else {
+            "Sem custos fixos cadastrados: você precisará de ${nominalWorkHours.roundToLong()}h nominais (${String.format(Locale.getDefault(), "%.1f", nominalWorkDays)} dias úteis) e ${String.format(Locale.getDefault(), "%.1f", monthsRemaining)} meses."
+        }
+
+        return GoalEffortCalculation(
+            goalAmount = goalAmount,
+            currentAmount = currentAmount,
+            remainingAmount = remainingAmount,
+            monthlyContribution = monthlyContribution,
+            netSalary = safeNetSalary,
+            fixedLivingCosts = fixedLivingCosts,
+            freeMonthlyIncome = freeMonthlyIncome,
+            fixedCostRatioPercent = fixedCostRatioPercent,
+            baseHourlyRate = baseHourlyRate,
+            realFreeHourlyRate = realFreeHourlyRate,
+            nominalWorkHours = nominalWorkHours,
+            nominalWorkDays = nominalWorkDays,
+            realWorkHours = realWorkHours,
+            realWorkDays = realWorkDays,
+            monthsRemaining = monthsRemaining,
+            monthsByFreeIncome = monthsByFreeIncome,
+            isDeficit = isDeficit,
+            summaryText = summaryText
+        )
     }
 
     private data class Quad(val m: Double, val y: Double, val fy: Double, val label: String)

@@ -137,6 +137,11 @@ data class ProductAnalysisItem(
     val isFavorite: Boolean = false
 )
 
+enum class GoalType(val key: String, val label: String) {
+    SAVINGS("SAVINGS", "Meta de Poupança"),
+    PURCHASE("PURCHASE", "Meta de Compra")
+}
+
 data class SavingGoalItem(
     val id: Long = 0,
     val userId: Long = 1,
@@ -144,6 +149,7 @@ data class SavingGoalItem(
     val targetAmount: Double,
     val currentAmount: Double = 0.0,
     val monthlyContribution: Double = 500.0,
+    val goalType: String = "SAVINGS",
     val targetWorkHours: Double = 0.0,
     val remainingWorkHours: Double = 0.0,
     val monthsToTarget: Double = 0.0,

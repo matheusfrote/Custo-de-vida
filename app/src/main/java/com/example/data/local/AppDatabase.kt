@@ -31,7 +31,7 @@ import com.example.data.local.entities.UserEntity
         ComparisonFolderEntity::class,
         ComparisonItemEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

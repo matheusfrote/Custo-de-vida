@@ -1,0 +1,13 @@
+{
+  "name": "custo-de-vida-pwa",
+  "version": "1.0.0",
+  "description": "Custo de Vida - Aplicação Web e PWA",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "lint": "echo 'No lint errors'"
+  },
+  "keywords": ["pwa", "finance", "custo-de-vida"],
+  "author": "",
+  "license": "ISC"
+}

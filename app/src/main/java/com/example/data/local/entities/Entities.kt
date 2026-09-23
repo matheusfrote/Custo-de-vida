@@ -70,7 +70,8 @@ data class SavingGoalEntity(
     val title: String,
     val targetAmount: Double,
     val currentAmount: Double = 0.0,
-    val monthlyContribution: Double = 500.0
+    val monthlyContribution: Double = 500.0,
+    val goalType: String = "SAVINGS" // "SAVINGS" (Meta de Poupança) or "PURCHASE" (Meta de Compra)
 )
 
 @Entity(tableName = "categories")

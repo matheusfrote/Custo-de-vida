@@ -1,6 +1,7 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
@@ -138,6 +139,9 @@ class QuantoCustaViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _showAuthDialog = MutableStateFlow(false)
     val showAuthDialog: StateFlow<Boolean> = _showAuthDialog.asStateFlow()
+
+    private val _isAuthLoading = MutableStateFlow(false)
+    val isAuthLoading: StateFlow<Boolean> = _isAuthLoading.asStateFlow()
 
     private val _showLinkImportDialog = MutableStateFlow(false)
     val showLinkImportDialog: StateFlow<Boolean> = _showLinkImportDialog.asStateFlow()
@@ -551,7 +555,13 @@ class QuantoCustaViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun addSavingGoal(title: String, targetAmount: Double, currentAmount: Double, monthlyContribution: Double) {
+    fun addSavingGoal(
+        title: String,
+        targetAmount: Double,
+        currentAmount: Double,
+        monthlyContribution: Double,
+        goalType: String = "SAVINGS"
+    ) {
         viewModelScope.launch {
             val user = currentUser.value ?: return@launch
             val entity = SavingGoalEntity(
@@ -559,10 +569,12 @@ class QuantoCustaViewModel(application: Application) : AndroidViewModel(applicat
                 title = title,
                 targetAmount = targetAmount,
                 currentAmount = currentAmount,
-                monthlyContribution = monthlyContribution
+                monthlyContribution = monthlyContribution,
+                goalType = goalType
             )
             repository.addSavingGoal(entity)
-            _snackbarMessage.value = "Meta '$title' criada com sucesso!"
+            val typeLabel = if (goalType == "PURCHASE") "Meta de compra" else "Meta de poupança"
+            _snackbarMessage.value = "$typeLabel '$title' criada com sucesso!"
         }
     }
 
@@ -588,6 +600,32 @@ class QuantoCustaViewModel(application: Application) : AndroidViewModel(applicat
 
     fun closeAuthDialog() {
         _showAuthDialog.value = false
+    }
+
+    fun signInWithGoogle(context: Context) {
+        viewModelScope.launch {
+            _isAuthLoading.value = true
+            try {
+                val helper = com.example.auth.GoogleAuthHelper(context)
+                val result = helper.signInWithGoogle()
+                result.onSuccess { googleUser ->
+                    val repoResult = repository.signInWithGoogleUser(googleUser.name, googleUser.email, googleUser.photoUrl)
+                    repoResult.onSuccess { user ->
+                        _showAuthDialog.value = false
+                        _snackbarMessage.value = "Conectado com o Google! Bem-vindo(a), ${user.name}."
+                    }.onFailure { err ->
+                        _snackbarMessage.value = err.message ?: "Erro ao salvar perfil Google."
+                    }
+                }.onFailure { err ->
+                    val msg = err.message ?: "Erro no login com Google."
+                    _snackbarMessage.value = msg
+                }
+            } catch (e: Exception) {
+                _snackbarMessage.value = "Erro ao iniciar Google Sign-In: ${e.message}"
+            } finally {
+                _isAuthLoading.value = false
+            }
+        }
     }
 
     fun login(email: String, pass: String) {

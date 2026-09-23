@@ -16,10 +16,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.dialogs.AuthDialog
 import com.example.ui.dialogs.LinkImportDialog
 import com.example.ui.dialogs.OnboardingWizardDialog
 import com.example.ui.dialogs.ShareCardDialog
 import com.example.ui.screens.*
+import com.example.ui.theme.EmeraldContainer
 import com.example.ui.theme.EmeraldPrimary
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.AppTab
@@ -44,6 +46,8 @@ class MainActivity : ComponentActivity() {
                 val shareCardText by viewModel.shareCardText.collectAsState()
                 val shareCardTitle by viewModel.shareCardTitle.collectAsState()
                 val currentUser by viewModel.currentUser.collectAsState()
+                val showAuthDialog by viewModel.showAuthDialog.collectAsState()
+                val isAuthLoading by viewModel.isAuthLoading.collectAsState()
 
                 val snackbarHostState = remember { SnackbarHostState() }
 
@@ -55,6 +59,17 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Global Dialogs
+                if (showAuthDialog) {
+                    AuthDialog(
+                        onDismiss = { viewModel.closeAuthDialog() },
+                        onLogin = { email, pass -> viewModel.login(email, pass) },
+                        onRegister = { name, email, pass -> viewModel.register(name, email, pass) },
+                        onRecover = { email -> viewModel.recoverPassword(email) },
+                        onGoogleSignIn = { viewModel.signInWithGoogle(this@MainActivity) },
+                        isLoading = isAuthLoading
+                    )
+                }
+
                 if (showOnboarding) {
                     OnboardingWizardDialog(
                         onDismiss = { viewModel.toggleOnboarding(false) },
@@ -107,6 +122,31 @@ class MainActivity : ComponentActivity() {
                                 if (currentUser?.isGuest == true) {
                                     TextButton(onClick = { viewModel.openAuthDialog() }) {
                                         Text("Entrar", color = EmeraldPrimary, fontWeight = FontWeight.Bold)
+                                    }
+                                } else {
+                                    Surface(
+                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                        color = EmeraldContainer,
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                Icons.Default.AccountCircle,
+                                                contentDescription = null,
+                                                tint = EmeraldPrimary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = currentUser?.name?.split(" ")?.firstOrNull() ?: "Perfil",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = EmeraldPrimary
+                                            )
+                                        }
                                     }
                                 }
                             },

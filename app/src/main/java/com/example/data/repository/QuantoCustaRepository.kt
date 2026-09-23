@@ -137,14 +137,25 @@ class QuantoCustaRepository(private val db: AppDatabase) {
             db.purchaseAnalysisDao().insertAnalysis(sampleSmartphone)
             db.purchaseAnalysisDao().insertAnalysis(sampleWatch)
 
-            // Seed initial goal
+            // Seed initial goals (Savings and Purchase)
             db.savingGoalDao().insertGoal(
                 SavingGoalEntity(
                     userId = defaultUserId,
                     title = "Reserva de Emergência",
                     targetAmount = 15000.0,
                     currentAmount = 4500.0,
-                    monthlyContribution = 750.0
+                    monthlyContribution = 750.0,
+                    goalType = "SAVINGS"
+                )
+            )
+            db.savingGoalDao().insertGoal(
+                SavingGoalEntity(
+                    userId = defaultUserId,
+                    title = "Smartphone Top de Linha",
+                    targetAmount = 4200.0,
+                    currentAmount = 1200.0,
+                    monthlyContribution = 400.0,
+                    goalType = "PURCHASE"
                 )
             )
         }
@@ -186,6 +197,41 @@ class QuantoCustaRepository(private val db: AppDatabase) {
                     name = name.trim(),
                     email = email.trim().lowercase(),
                     passwordHash = hashPassword(password),
+                    isGuest = false
+                )
+            )
+            val newUser = db.userDao().getUserById(newId)!!
+            db.financialProfileDao().upsertProfile(FinancialProfileEntity(userId = newId))
+            newUser
+        }
+        _currentUser.value = entity
+        Result.success(entity)
+    }
+
+    suspend fun signInWithGoogleUser(name: String, email: String, photoUrl: String?): Result<UserEntity> = withContext(Dispatchers.IO) {
+        val existing = db.userDao().getUserByEmail(email.trim().lowercase())
+        val current = _currentUser.value
+        val entity = if (existing != null) {
+            val updated = existing.copy(
+                name = if (name.isNotBlank()) name else existing.name,
+                isGuest = false
+            )
+            db.userDao().updateUser(updated)
+            updated
+        } else if (current != null && current.isGuest) {
+            val updated = current.copy(
+                name = if (name.isNotBlank()) name else "Usuário Google",
+                email = email.trim().lowercase(),
+                isGuest = false
+            )
+            db.userDao().updateUser(updated)
+            updated
+        } else {
+            val newId = db.userDao().insertUser(
+                UserEntity(
+                    name = if (name.isNotBlank()) name else "Usuário Google",
+                    email = email.trim().lowercase(),
+                    passwordHash = "",
                     isGuest = false
                 )
             )

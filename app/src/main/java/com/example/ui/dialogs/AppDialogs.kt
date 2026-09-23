@@ -1,10 +1,13 @@
 package com.example.ui.dialogs
 
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -312,7 +315,9 @@ fun AuthDialog(
     onDismiss: () -> Unit,
     onLogin: (String, String) -> Unit,
     onRegister: (String, String, String) -> Unit,
-    onRecover: (String) -> Unit
+    onRecover: (String) -> Unit,
+    onGoogleSignIn: () -> Unit = {},
+    isLoading: Boolean = false
 ) {
     var isRegisterMode by remember { mutableStateOf(false) }
     var isRecoverMode by remember { mutableStateOf(false) }
@@ -340,6 +345,65 @@ fun AuthDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                if (!isRecoverMode) {
+                    // Google Sign-In Button
+                    OutlinedButton(
+                        onClick = onGoogleSignIn,
+                        enabled = !isLoading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Conectando ao Google...")
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "G",
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 15.sp,
+                                        color = Color(0xFF4285F4)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Continuar com o Google",
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                        Text(
+                            text = "ou com e-mail",
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    }
+                }
+
                 if (isRegisterMode && !isRecoverMode) {
                     OutlinedTextField(
                         value = name,
@@ -390,6 +454,7 @@ fun AuthDialog(
                         else -> onLogin(email, password)
                     }
                 },
+                enabled = !isLoading,
                 colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
             ) {
                 Text(
@@ -687,34 +752,151 @@ fun AddExpenseDialog(
 @Composable
 fun AddGoalDialog(
     onDismiss: () -> Unit,
-    onAdd: (String, Double, Double, Double) -> Unit
+    onAdd: (String, Double, Double, Double, String) -> Unit,
+    essentialExpenses: Double = 0.0,
+    freeIncome: Double = 0.0
 ) {
+    var goalType by remember { mutableStateOf("PURCHASE") } // "PURCHASE" or "SAVINGS"
     var title by remember { mutableStateOf("") }
     var target by remember { mutableStateOf("") }
     var current by remember { mutableStateOf("0") }
-    var monthly by remember { mutableStateOf("500") }
+    var monthly by remember { mutableStateOf("400") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nova Meta de Poupança") },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (goalType == "PURCHASE") Icons.Default.ShoppingCart else Icons.Default.Savings,
+                    contentDescription = null,
+                    tint = EmeraldPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (goalType == "PURCHASE") "Nova Meta de Compra" else "Nova Meta de Poupança",
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                Text(
+                    text = "Selecione a finalidade do seu objetivo:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Meta de Compra Chip/Card
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { goalType = "PURCHASE" },
+                        color = if (goalType == "PURCHASE") EmeraldContainer else MaterialTheme.colorScheme.surfaceVariant,
+                        border = if (goalType == "PURCHASE") BorderStroke(1.5.dp, EmeraldPrimary) else null,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Default.ShoppingCart,
+                                contentDescription = null,
+                                tint = if (goalType == "PURCHASE") EmeraldPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "Meta de Compra",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (goalType == "PURCHASE") EmeraldPrimary else MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                "Produto / Bem",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    // Meta de Poupança Chip/Card
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { goalType = "SAVINGS" },
+                        color = if (goalType == "SAVINGS") EmeraldContainer else MaterialTheme.colorScheme.surfaceVariant,
+                        border = if (goalType == "SAVINGS") BorderStroke(1.5.dp, EmeraldPrimary) else null,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Default.Savings,
+                                contentDescription = null,
+                                tint = if (goalType == "SAVINGS") EmeraldPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "Meta de Poupança",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (goalType == "SAVINGS") EmeraldPrimary else MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                "Reserva / Fundo",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                if (goalType == "PURCHASE") {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = EmeraldContainer.copy(alpha = 0.4f)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Info, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Consideraremos seus custos fixos atuais de ${FinancialEngine.formatCurrency(essentialExpenses)} para calcular o tempo real de trabalho livre necessário!",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Objetivo (ex: MacBook, Viagem)") },
+                    label = { Text(if (goalType == "PURCHASE") "O que quer comprar? (ex: iPhone, Carro)" else "Nome da Meta (ex: Reserva Emergencial)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = target,
                     onValueChange = { target = it },
-                    label = { Text("Valor Alvo (R$)") },
+                    label = { Text("Valor Total (R$)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -722,7 +904,7 @@ fun AddGoalDialog(
                 OutlinedTextField(
                     value = current,
                     onValueChange = { current = it },
-                    label = { Text("Já guardado (R$)") },
+                    label = { Text("Já guardado para isso (R$)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -730,7 +912,7 @@ fun AddGoalDialog(
                 OutlinedTextField(
                     value = monthly,
                     onValueChange = { monthly = it },
-                    label = { Text("Economia por mês (R$)") },
+                    label = { Text("Aporte planejado por mês (R$)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -744,13 +926,13 @@ fun AddGoalDialog(
                     val c = current.replace(",", ".").toDoubleOrNull() ?: 0.0
                     val m = monthly.replace(",", ".").toDoubleOrNull() ?: 0.0
                     if (title.isNotBlank() && t > 0.0) {
-                        onAdd(title, t, c, m)
+                        onAdd(title, t, c, m, goalType)
                         onDismiss()
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
             ) {
-                Text("Criar Meta")
+                Text(if (goalType == "PURCHASE") "Criar Meta de Compra" else "Criar Meta de Poupança")
             }
         },
         dismissButton = {

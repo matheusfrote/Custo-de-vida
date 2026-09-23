@@ -72,7 +72,6 @@ fun SettingsScreen(viewModel: QuantoCustaViewModel) {
     var useCltDivisor by remember { mutableStateOf(false) }
     var showExplanation by remember { mutableStateOf(false) }
 
-    var showAddExpenseDialog by remember { mutableStateOf(false) }
     var showTermsDialog by remember { mutableStateOf(false) }
     var showExtensionDialog by remember { mutableStateOf(false) }
 
@@ -99,15 +98,6 @@ fun SettingsScreen(viewModel: QuantoCustaViewModel) {
             onLogin = { email, pass -> viewModel.login(email, pass) },
             onRegister = { name, email, pass -> viewModel.register(name, email, pass) },
             onRecover = { email -> viewModel.recoverPassword(email) }
-        )
-    }
-
-    if (showAddExpenseDialog) {
-        AddExpenseDialog(
-            onDismiss = { showAddExpenseDialog = false },
-            onAdd = { category, name, amount, isEssential ->
-                viewModel.addExpense(category, name, amount, isEssential)
-            }
         )
     }
 
@@ -561,179 +551,6 @@ fun SettingsScreen(viewModel: QuantoCustaViewModel) {
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
-                        }
-                    }
-                }
-            }
-        }
-
-        // --- PAINEL: EXEMPLOS PRÁTICOS NA VIDA REAL ---
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Insights, contentDescription = null, tint = EmeraldPrimary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "O Que Isso Significa na Prática?",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Função auxiliar de formatação para demonstração
-                    fun formatDemoTime(price: Double): String {
-                        if (hourlyRate <= 0) return "0 min"
-                        val totalMinutes = (price / hourlyRate * 60).roundToInt()
-                        val hours = totalMinutes / 60
-                        val mins = totalMinutes % 60
-                        return if (hours > 0) "${hours}h ${mins}min" else "${mins}min"
-                    }
-
-                    val examples = listOf(
-                        Triple("☕ Café ou lanche rápido", 15.0, formatDemoTime(15.0)),
-                        Triple("🍕 Almoço ou jantar fora", 80.0, formatDemoTime(80.0)),
-                        Triple("👟 Tênis esportivo", 350.0, formatDemoTime(350.0)),
-                        Triple("📱 Smartphone moderno", 2500.0, formatDemoTime(2500.0))
-                    )
-
-                    examples.forEach { (itemTitle, price, timeEquivalent) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(itemTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    FinancialEngine.formatCurrency(price),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Surface(
-                                color = EmeraldPrimary.copy(alpha = 0.12f),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(
-                                    text = timeEquivalent,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = EmeraldPrimary
-                                )
-                            }
-                        }
-                        if (itemTitle != examples.last().first) {
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
-                        }
-                    }
-                }
-            }
-        }
-
-        // --- CUSTOS FIXOS & RENDA DISPONÍVEL (OPCIONAL) ---
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Custos Fixos & Renda Livre",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            val freeIncome = (netValue - essentialExpensesSum).coerceAtLeast(0.0)
-                            val essentialTime = FinancialEngine.formatAdaptiveWorkTime(
-                                amount = essentialExpensesSum,
-                                hourlyRate = hourlyRate,
-                                weeklyHours = weeklyHoursValue,
-                                hoursPerMonth = monthlyHours
-                            )
-                            val freeIncomeTime = FinancialEngine.formatAdaptiveWorkTime(
-                                amount = freeIncome,
-                                hourlyRate = hourlyRate,
-                                weeklyHours = weeklyHoursValue,
-                                hoursPerMonth = monthlyHours
-                            )
-                            Text(
-                                text = "Custos Fixos: ${FinancialEngine.formatCurrency(essentialExpensesSum)} ($essentialTime)",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = EmeraldPrimary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = "Renda Livre: ${FinancialEngine.formatCurrency(freeIncome)} ($freeIncomeTime)",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = AccentGold,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                        IconButton(onClick = { showAddExpenseDialog = true }) {
-                            Icon(Icons.Default.AddCircle, contentDescription = "Adicionar despesa", tint = EmeraldPrimary)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    if (expenses.isEmpty()) {
-                        Text(
-                            text = "Nenhum custo fixo cadastrado. Cadastre aluguel, luz, internet se desejar ver sua hora livre além da hora líquida.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        expenses.take(4).forEach { exp ->
-                            val expTime = FinancialEngine.formatAdaptiveWorkTime(
-                                amount = exp.amount,
-                                hourlyRate = hourlyRate,
-                                weeklyHours = weeklyHoursValue,
-                                hoursPerMonth = monthlyHours
-                            )
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(exp.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                                    Text(
-                                        "${if (exp.isEssential) "Essencial" else "Opcional"} • $expTime",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Text(
-                                    FinancialEngine.formatCurrency(exp.amount),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                IconButton(
-                                    onClick = { viewModel.deleteExpense(exp.id) },
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Icon(Icons.Default.Close, contentDescription = "Excluir", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
-                                }
-                            }
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
                         }
                     }
                 }
