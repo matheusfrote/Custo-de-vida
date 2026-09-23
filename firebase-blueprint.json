@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with financial preferences and data sync settings",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 120 },
+        "name": { "type": "string", "maxLength": 100 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "grossSalary": { "type": "number" },
+        "netSalary": { "type": "number" },
+        "weeklyHours": { "type": "number" },
+        "daysPerWeek": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["userId", "email"]
+    },
+    "UserExpense": {
+      "title": "UserExpense",
+      "description": "User recurrent monthly expense",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 120 },
+        "amount": { "type": "number" },
+        "category": { "type": "string", "maxLength": 60 },
+        "isEssential": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "userId", "name", "amount"]
+    },
+    "UserHistory": {
+      "title": "UserHistory",
+      "description": "Calculation history item for purchases evaluated in work hours",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "productName": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 60 },
+        "price": { "type": "number" },
+        "workHours": { "type": "number" },
+        "workMinutes": { "type": "number" },
+        "workDays": { "type": "number" },
+        "percentageOfSalary": { "type": "number" },
+        "percentageOfFreeIncome": { "type": "number" },
+        "decision": { "type": "string", "enum": ["PURCHASED", "GIVEN_UP", "PENDING"] },
+        "reflectionUntil": { "type": "number" },
+        "isFavorite": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "productName", "price"]
+    },
+    "UserGoal": {
+      "title": "UserGoal",
+      "description": "Financial savings or purchase goal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 150 },
+        "targetAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "monthlyContribution": { "type": "number" },
+        "goalType": { "type": "string", "enum": ["SAVINGS", "PURCHASE"] },
+        "category": { "type": "string", "maxLength": 60 },
+        "targetDate": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "title", "targetAmount"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Main user document storing profile and financial settings"
+    },
+    "/users/{userId}/expenses/{expenseId}": {
+      "schema": "UserExpense",
+      "description": "User specific expenses"
+    },
+    "/users/{userId}/history/{historyId}": {
+      "schema": "UserHistory",
+      "description": "User specific purchase evaluations and calculations"
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": "UserGoal",
+      "description": "User financial goals"
+    }
+  }
+}

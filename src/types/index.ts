@@ -127,7 +127,9 @@ export interface DashboardMetrics {
 }
 
 export interface UserAccount {
+  uid?: string;
   name: string;
   email: string;
+  photoURL?: string;
   isLoggedIn: boolean;
 }

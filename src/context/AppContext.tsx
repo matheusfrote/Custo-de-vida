@@ -10,6 +10,12 @@ import {
   UserAccount,
 } from '../types';
 import { FinancialEngine } from '../domain/financialEngine';
+import {
+  subscribeToAuthState,
+  saveUserDataToFirestore,
+  loadUserDataFromFirestore,
+  logoutFirebase,
+} from '../services/firebase';
 
 interface AppContextType {
   activeTab: ActiveTab;
@@ -177,7 +183,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return current;
   };
 
-  // Load from local storage
+  // Load from local storage on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -195,7 +201,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Save to local storage & optional background sync
+  // Listen to Firebase Authentication state (real login)
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthState(async (fbUser) => {
+      if (fbUser) {
+        const loggedUser: UserAccount = {
+          uid: fbUser.uid,
+          name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Usuário',
+          email: fbUser.email || '',
+          photoURL: fbUser.photoURL || undefined,
+          isLoggedIn: true,
+        };
+        setUser(loggedUser);
+
+        // Fetch user data from Cloud Firestore
+        try {
+          const cloudData = await loadUserDataFromFirestore(fbUser.uid);
+          if (cloudData) {
+            if (cloudData.profile) setProfile(cloudData.profile as FinancialProfileData);
+            if (Array.isArray(cloudData.expenses) && cloudData.expenses.length > 0) {
+              setExpenses(cloudData.expenses as ExpenseItem[]);
+            }
+            if (Array.isArray(cloudData.history) && cloudData.history.length > 0) {
+              setHistory(cloudData.history as PurchaseAnalysisItem[]);
+            }
+            if (Array.isArray(cloudData.goals) && cloudData.goals.length > 0) {
+              setGoals(cloudData.goals as SavingGoalItem[]);
+            }
+            if (Array.isArray(cloudData.comparisonFolders)) {
+              setComparisonFolders(cloudData.comparisonFolders as ComparisonFolderData[]);
+            }
+          }
+        } catch (e) {
+          console.warn('Could not load user data from cloud:', e);
+        }
+      } else {
+        setUser((prev) => {
+          if (!prev.isLoggedIn && !prev.uid) return prev;
+          return {
+            uid: undefined,
+            name: 'Convidado',
+            email: '',
+            photoURL: undefined,
+            isLoggedIn: false,
+          };
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Save to local storage & Cloud Firestore
   useEffect(() => {
     try {
       const payload = {
@@ -208,13 +265,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 
+      // Real cloud sync when user is authenticated with Firebase
+      if (user.isLoggedIn && user.uid) {
+        saveUserDataToFirestore(user.uid, {
+          profile,
+          expenses,
+          history,
+          goals,
+          comparisonFolders,
+          user: {
+            uid: user.uid,
+            name: user.name,
+            email: user.email,
+            photoURL: user.photoURL || null,
+          },
+        }).catch((err) => {
+          console.warn('Firestore background sync notice:', err);
+        });
+      }
+
       if (typeof window !== 'undefined' && 'fetch' in window) {
         fetch('/api/data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         }).catch(() => {
-          // Server offline or not configured: silent fallback to localStorage
+          // Silent fallback to local storage
         });
       }
     } catch (e) {

@@ -35,11 +35,19 @@ export const Header: React.FC = () => {
           {user.isLoggedIn ? (
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-semibold text-emerald-400 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-semibold text-emerald-400 transition-colors"
               aria-label={`Perfil de ${user.name}`}
             >
-              <User className="w-3.5 h-3.5" />
-              <span>{user.name.split(' ')[0]}</span>
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt={user.name}
+                  className="w-4 h-4 rounded-full object-cover"
+                />
+              ) : (
+                <User className="w-3.5 h-3.5" />
+              )}
+              <span className="max-w-[100px] truncate">{user.name.split(' ')[0]}</span>
             </button>
           ) : (
             <button

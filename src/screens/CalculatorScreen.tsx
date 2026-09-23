@@ -20,7 +20,6 @@ import {
 import { useApp } from '../context/AppContext';
 import { FinancialEngine } from '../domain/financialEngine';
 import { CalculationResult } from '../types';
-import { PWAInstallButton } from '../components/PWAInstallButton';
 
 export const CalculatorScreen: React.FC = () => {
   const { profile, essentialExpensesTotal, setActiveTab, addAnalysis, showToast, consumePrefill } = useApp();
@@ -155,19 +154,6 @@ export const CalculatorScreen: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto space-y-4 pb-20">
-      {/* Social Proof & Collective Impact Banner */}
-      <div className="bg-emerald-950/40 border border-emerald-500/25 rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-2">
-          <Flame className="w-4 h-4 text-amber-400 shrink-0" />
-          <span className="text-[11px] font-semibold text-emerald-300">
-            Comunidade consciente: <strong>+42.000h</strong> e <strong>R$ 1,2 milhão</strong> poupados
-          </span>
-        </div>
-      </div>
-
-      {/* PWA Install Promo Banner */}
-      <PWAInstallButton variant="banner" />
-
       {/* Top Banner Header */}
       <div className="bg-slate-900 border border-slate-800/80 rounded-3xl p-5 text-center space-y-2.5 shadow-xl relative overflow-hidden">
         <div className="flex items-center justify-center gap-1.5 text-emerald-400">
