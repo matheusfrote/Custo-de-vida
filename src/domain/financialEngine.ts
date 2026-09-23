@@ -173,10 +173,10 @@ export class FinancialEngine {
    * Handles "2.499,00", "2499,90", "2499.90", "R$ 1.500,00", "5000", etc.
    */
   static parseCurrencyInput(input: string | number | undefined | null): number {
-    if (typeof input === 'number') return isNaN(input) ? 0 : input;
+    if (typeof input === 'number') return !isNaN(input) && isFinite(input) && input > 0 ? input : 0;
     if (!input) return 0;
 
-    let clean = input.toString().trim().replace(/^R\$\s*/i, '').trim();
+    let clean = input.toString().trim().slice(0, 50).replace(/^R\$\s*/i, '').trim();
 
     // Check if contains both dot and comma
     const hasDot = clean.includes('.');
@@ -226,10 +226,35 @@ export class FinancialEngine {
     let category = 'Tecnologia';
     let name = 'Produto Importado';
 
+    if (!urlStr || typeof urlStr !== 'string') {
+      return { name, category, detectedStore };
+    }
+
     try {
-      const parsed = new URL(urlStr);
+      const parsed = new URL(urlStr.trim());
+      // Protocol Enforcement: Only HTTP and HTTPS are permitted
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return { name: 'Link Não Suportado', category: 'Outros', detectedStore: 'Desconhecida' };
+      }
+
       const host = parsed.hostname.toLowerCase();
-      const pathname = decodeURIComponent(parsed.pathname);
+      // Block internal or loopback hostnames
+      if (
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host.endsWith('.local') ||
+        host.endsWith('.internal') ||
+        host.includes('169.254')
+      ) {
+        return { name: 'Host Restrito', category: 'Outros', detectedStore: 'Local' };
+      }
+
+      let pathname = '';
+      try {
+        pathname = decodeURIComponent(parsed.pathname);
+      } catch {
+        pathname = parsed.pathname;
+      }
 
       if (host.includes('mercadolivre') || host.includes('mercadolibre')) {
         detectedStore = 'Mercado Livre';
@@ -286,8 +311,11 @@ export class FinancialEngine {
       let price: number | undefined;
       if (priceParam) {
         const parsedP = parseFloat(priceParam.replace(',', '.'));
-        if (!isNaN(parsedP) && parsedP > 0) price = parsedP;
+        if (!isNaN(parsedP) && isFinite(parsedP) && parsedP > 0 && parsedP < 10000000) price = parsedP;
       }
+
+      // XSS Protection: Clean extracted name
+      name = name.replace(/<[^>]*>/g, '').trim().slice(0, 100);
 
       return { name, price, category, detectedStore };
     } catch {
@@ -310,36 +338,59 @@ export class FinancialEngine {
     totalInterest: number;
     interestPercentage: number;
   } {
-    if (installments <= 1) {
+    const safePrincipal = Math.max(0, isFinite(principal) ? principal : 0);
+    const safeInstallments = Math.max(1, Math.min(120, Math.floor(isFinite(installments) ? installments : 1)));
+    const safeRate = Math.max(0, Math.min(100, isFinite(interestRateMonthly) ? interestRateMonthly : 0));
+
+    if (safePrincipal === 0) {
       return {
-        installmentValue: principal,
-        totalAmount: principal,
+        installmentValue: 0,
+        totalAmount: 0,
         totalInterest: 0,
         interestPercentage: 0,
       };
     }
 
-    if (interestRateMonthly <= 0) {
+    if (safeInstallments <= 1) {
       return {
-        installmentValue: principal / installments,
-        totalAmount: principal,
+        installmentValue: safePrincipal,
+        totalAmount: safePrincipal,
         totalInterest: 0,
         interestPercentage: 0,
       };
     }
 
-    const i = interestRateMonthly / 100;
-    const factor = Math.pow(1 + i, installments);
-    const pmt = principal * ((i * factor) / (factor - 1));
-    const totalAmount = pmt * installments;
-    const totalInterest = Math.max(0, totalAmount - principal);
-    const interestPercentage = (totalInterest / principal) * 100;
+    if (safeRate <= 0) {
+      const val = safePrincipal / safeInstallments;
+      return {
+        installmentValue: isFinite(val) ? val : safePrincipal,
+        totalAmount: safePrincipal,
+        totalInterest: 0,
+        interestPercentage: 0,
+      };
+    }
+
+    const i = safeRate / 100;
+    const factor = Math.pow(1 + i, safeInstallments);
+    if (!isFinite(factor) || factor <= 1) {
+      return {
+        installmentValue: safePrincipal / safeInstallments,
+        totalAmount: safePrincipal,
+        totalInterest: 0,
+        interestPercentage: 0,
+      };
+    }
+
+    const pmt = safePrincipal * ((i * factor) / (factor - 1));
+    const totalAmount = pmt * safeInstallments;
+    const totalInterest = Math.max(0, totalAmount - safePrincipal);
+    const interestPercentage = (totalInterest / safePrincipal) * 100;
 
     return {
-      installmentValue: pmt,
-      totalAmount,
-      totalInterest,
-      interestPercentage,
+      installmentValue: isFinite(pmt) ? pmt : safePrincipal / safeInstallments,
+      totalAmount: isFinite(totalAmount) ? totalAmount : safePrincipal,
+      totalInterest: isFinite(totalInterest) ? totalInterest : 0,
+      interestPercentage: isFinite(interestPercentage) ? interestPercentage : 0,
     };
   }
 }

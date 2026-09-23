@@ -449,20 +449,92 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Backup JSON exportado com sucesso!');
   };
 
+// Security Helpers: CSV Formula Injection & Prototype Pollution Sanitizers
+function sanitizeCsvValue(val: unknown): string {
+  if (val === null || val === undefined) return '""';
+  let str = String(val).trim();
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'` + str;
+  }
+  return `"${str.replace(/"/g, '""')}"`;
+}
+
+function deepCleanObject<T>(input: T): T {
+  if (!input || typeof input !== 'object') return input;
+  if (Array.isArray(input)) {
+    return input.map((item) => deepCleanObject(item)) as unknown as T;
+  }
+  const clean = Object.create(null);
+  for (const key of Object.keys(input as Record<string, unknown>)) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      continue;
+    }
+    clean[key] = deepCleanObject((input as Record<string, unknown>)[key]);
+  }
+  return clean as T;
+}
+
   const importBackupJson = (jsonString: string) => {
     try {
-      const data = JSON.parse(jsonString);
-      if (!data || typeof data !== 'object') {
+      const parsedRaw = JSON.parse(jsonString);
+      if (!parsedRaw || typeof parsedRaw !== 'object') {
         throw new Error('Conteúdo não é um objeto JSON válido.');
       }
-      if (data.profile && typeof data.profile === 'object') setProfile(data.profile);
-      if (Array.isArray(data.expenses)) setExpenses(data.expenses);
-      if (Array.isArray(data.history)) setHistory(data.history);
-      if (Array.isArray(data.goals)) setGoals(data.goals);
+      const data = deepCleanObject(parsedRaw);
+
+      if (data.profile && typeof data.profile === 'object') {
+        setProfile({
+          ...defaultProfile,
+          ...data.profile,
+          netSalary: Math.max(0, Math.min(Number(data.profile.netSalary) || 0, 100000000)),
+          grossSalary: Math.max(0, Math.min(Number(data.profile.grossSalary) || 0, 100000000)),
+          weeklyHours: Math.max(1, Math.min(Number(data.profile.weeklyHours) || 40, 168)),
+          daysPerWeek: Math.max(1, Math.min(Number(data.profile.daysPerWeek) || 5, 7)),
+        });
+      }
+      if (Array.isArray(data.expenses)) {
+        const cleanExpenses = data.expenses
+          .filter((e: any) => e && typeof e === 'object' && e.name)
+          .map((e: any) => ({
+            id: String(e.id || Math.random().toString(36).slice(2)),
+            name: String(e.name).slice(0, 100),
+            amount: Math.max(0, Math.min(Number(e.amount) || 0, 100000000)),
+            category: String(e.category || 'Geral').slice(0, 50),
+            isEssential: Boolean(e.isEssential),
+          }));
+        setExpenses(cleanExpenses);
+      }
+      if (Array.isArray(data.history)) {
+        const cleanHistory = data.history
+          .filter((h: any) => h && typeof h === 'object' && h.productName)
+          .map((h: any) => ({
+            id: String(h.id || Math.random().toString(36).slice(2)),
+            productName: String(h.productName).slice(0, 150),
+            category: String(h.category || 'Geral').slice(0, 50),
+            price: Math.max(0, Math.min(Number(h.price) || 0, 100000000)),
+            workHours: Math.max(0, Number(h.workHours) || 0),
+            workMinutes: Math.max(0, Math.min(59, Number(h.workMinutes) || 0)),
+            workDays: Math.max(0, Number(h.workDays) || 0),
+            percentageOfSalary: Math.max(0, Number(h.percentageOfSalary) || 0),
+            percentageOfFreeIncome: Math.max(0, Number(h.percentageOfFreeIncome) || 0),
+            decision: ['PURCHASED', 'GIVEN_UP', 'PENDING'].includes(h.decision) ? h.decision : 'PENDING',
+            reflectionUntil: typeof h.reflectionUntil === 'number' ? h.reflectionUntil : null,
+            isFavorite: Boolean(h.isFavorite),
+            createdAt: typeof h.createdAt === 'number' ? h.createdAt : Date.now(),
+          }));
+        setHistory(cleanHistory);
+      }
+      if (Array.isArray(data.goals)) setGoals(data.goals.filter((g: any) => g && typeof g === 'object' && g.title));
       if (Array.isArray(data.comparisonFolders)) setComparisonFolders(data.comparisonFolders);
-      if (data.user && typeof data.user === 'object') setUser(data.user);
+      if (data.user && typeof data.user === 'object') {
+        setUser({
+          name: String(data.user.name || 'Convidado').slice(0, 60),
+          email: String(data.user.email || '').slice(0, 100),
+          isLoggedIn: Boolean(data.user.isLoggedIn),
+        });
+      }
       showToast('Dados restaurados com sucesso!');
-    } catch (e) {
+    } catch {
       showToast('Arquivo de backup inválido.');
     }
   };
@@ -470,10 +542,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const exportCsvReport = () => {
     const headers = 'ID,Produto,Categoria,Preço (R$),Horas de Trabalho,Status,Data\n';
     const rows = history
-      .map(
-        (i) =>
-          `"${i.id}","${i.productName}","${i.category}",${i.price.toFixed(2)},"${i.workHours}h ${i.workMinutes}min","${i.decision}","${new Date(i.createdAt).toLocaleDateString('pt-BR')}"`
-      )
+      .map((i) => {
+        const id = sanitizeCsvValue(i.id);
+        const name = sanitizeCsvValue(i.productName);
+        const category = sanitizeCsvValue(i.category);
+        const price = (Number(i.price) || 0).toFixed(2);
+        const hours = sanitizeCsvValue(`${i.workHours}h ${i.workMinutes}min`);
+        const decision = sanitizeCsvValue(i.decision);
+        const date = sanitizeCsvValue(new Date(i.createdAt).toLocaleDateString('pt-BR'));
+        return `${id},${name},${category},${price},${hours},${decision},${date}`;
+      })
       .join('\n');
     const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -482,7 +560,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     a.download = `historico-custo-de-vida-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('Relatório CSV exportado!');
+    showToast('Relatório CSV exportado com segurança!');
   };
 
   const clearAllData = () => {

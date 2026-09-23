@@ -10,51 +10,91 @@ export const AuthModal: React.FC = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
 
   if (!isAuthModalOpen) return null;
 
+  const isLocked = lockoutUntil !== null && Date.now() < lockoutUntil;
+  const remainingSeconds = lockoutUntil ? Math.max(0, Math.ceil((lockoutUntil - Date.now()) / 1000)) : 0;
+
   const handleGoogleLogin = () => {
+    if (isLocked) {
+      showToast(`Muitas tentativas. Aguarde ${remainingSeconds} segundos.`);
+      return;
+    }
     setUser({
       name: 'Matheus Frote',
       email: 'matheusfrote3@gmail.com',
       isLoggedIn: true,
     });
+    setPassword('');
+    setFailedAttempts(0);
     showToast('Login com Google realizado com sucesso!');
     setIsAuthModalOpen(false);
   };
 
   const validateEmail = (val: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) && val.length <= 100;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !validateEmail(email.trim())) {
-      showToast('Por favor, informe um e-mail válido.');
+    if (isLocked) {
+      showToast(`Acesso temporariamente bloqueado. Aguarde ${remainingSeconds} segundos.`);
       return;
     }
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !validateEmail(cleanEmail)) {
+      const nextFail = failedAttempts + 1;
+      setFailedAttempts(nextFail);
+      if (nextFail >= 5) {
+        setLockoutUntil(Date.now() + 60 * 1000);
+        showToast('Muitas tentativas inválidas. Bloqueado por 60 segundos.');
+      } else {
+        showToast('Por favor, informe um e-mail válido.');
+      }
+      return;
+    }
+
     if (!password || password.length < 6) {
       showToast('A senha deve conter no mínimo 6 caracteres.');
       return;
     }
-    const derivedName = email.split('@')[0];
+
+    if (password.length > 128) {
+      showToast('A senha excede o limite máximo permitido de 128 caracteres.');
+      return;
+    }
+
+    const derivedName = cleanEmail.split('@')[0].slice(0, 40);
     setUser({
       name: derivedName.charAt(0).toUpperCase() + derivedName.slice(1),
-      email: email.trim(),
+      email: cleanEmail,
       isLoggedIn: true,
     });
+    // Immediately clear sensitive password from memory
+    setPassword('');
+    setFailedAttempts(0);
+    setLockoutUntil(null);
     showToast(isRegistering ? 'Conta criada com sucesso!' : 'Login realizado com sucesso!');
     setIsAuthModalOpen(false);
   };
 
   const handlePasswordReset = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !validateEmail(email.trim())) {
+    if (isLocked) {
+      showToast(`Aguarde ${remainingSeconds}s.`);
+      return;
+    }
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !validateEmail(cleanEmail)) {
       showToast('Digite um e-mail válido para redefinição.');
       return;
     }
     setResetEmailSent(true);
-    showToast(`Instruções de redefinição enviadas para ${email.trim()}`);
+    showToast(`Instruções de redefinição enviadas para ${cleanEmail}`);
   };
 
   const handleLogout = () => {
@@ -63,6 +103,7 @@ export const AuthModal: React.FC = () => {
       email: '',
       isLoggedIn: false,
     });
+    setPassword('');
     showToast('Desconectado com sucesso.');
     setIsAuthModalOpen(false);
   };

@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "lint": "echo 'No lint errors'",
-    "test": "npx tsx --test test/financialEngine.test.js"
+    "test": "npx tsx --test test/*.test.js"
   },
   "keywords": [
     "pwa",
