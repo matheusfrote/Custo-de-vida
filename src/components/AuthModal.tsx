@@ -26,7 +26,9 @@ export const AuthModal: React.FC = () => {
   const isLocked = lockoutUntil !== null && Date.now() < lockoutUntil;
   const remainingSeconds = lockoutUntil ? Math.max(0, Math.ceil((lockoutUntil - Date.now()) / 1000)) : 0;
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    if (isLoading) return;
     if (isLocked) {
       showToast(`Muitas tentativas. Aguarde ${remainingSeconds} segundos.`);
       return;
@@ -40,13 +42,25 @@ export const AuthModal: React.FC = () => {
       showToast(`Bem-vindo, ${fbUser.displayName || fbUser.email?.split('@')[0] || 'Usuário'}!`);
       setIsAuthModalOpen(false);
     } catch (err: any) {
-      console.error('Google auth error:', err);
+      if (
+        err?.code === 'auth/unauthorized-domain' ||
+        err?.code === 'auth/popup-closed-by-user' ||
+        err?.code === 'auth/cancelled-popup-request'
+      ) {
+        console.warn('Google auth notice:', err?.code || err?.message);
+      } else {
+        console.error('Google auth error:', err);
+      }
       if (err?.code === 'auth/popup-closed-by-user') {
         showToast('Login cancelado.');
       } else if (err?.code === 'auth/popup-blocked') {
         showToast('O pop-up de login foi bloqueado pelo navegador. Por favor, permita pop-ups.');
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        showToast('Serviço de autenticação temporariamente indisponível. Tente novamente em instantes.');
+      } else if (err?.code === 'auth/network-request-failed') {
+        showToast('Falha de conexão com o serviço de login. Verifique sua rede.');
       } else if (err?.code === 'auth/internal-error') {
-        showToast('Erro ao comunicar com o Google. Verifique se pop-ups estão permitidos ou entre usando e-mail.');
+        showToast('Erro de comunicação. Verifique se pop-ups estão permitidos.');
       } else {
         showToast(err?.message || 'Erro ao autenticar com o Google. Tente novamente.');
       }
@@ -398,6 +412,16 @@ export const AuthModal: React.FC = () => {
                 >
                   {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>{isRegistering ? 'Cadastrar' : 'Entrar'}</span>
+                </button>
+              </div>
+
+              <div className="pt-3 border-t border-slate-800/80 text-center">
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(false)}
+                  className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                >
+                  Continuar sem login (salvar apenas neste dispositivo)
                 </button>
               </div>
             </form>

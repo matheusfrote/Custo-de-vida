@@ -94,25 +94,18 @@ export async function testConnection() {
 
 // Authentication Helpers
 export async function loginWithGoogle(): Promise<FirebaseUser> {
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({
-    prompt: 'select_account',
-  });
   try {
-    const result = await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (err: any) {
-    console.error('Google Sign-in error:', err);
-    // If popup had an internal error, try once without prompt custom parameter
-    if (err?.code === 'auth/internal-error') {
-      try {
-        const fallbackProvider = new GoogleAuthProvider();
-        const fallbackResult = await signInWithPopup(auth, fallbackProvider);
-        return fallbackResult.user;
-      } catch (retryErr: any) {
-        console.error('Google Sign-in fallback error:', retryErr);
-        throw retryErr;
-      }
+    if (
+      err?.code === 'auth/unauthorized-domain' ||
+      err?.code === 'auth/popup-closed-by-user' ||
+      err?.code === 'auth/cancelled-popup-request'
+    ) {
+      console.warn('Google Sign-in notice:', err?.code || err?.message);
+    } else {
+      console.error('Google Sign-in error:', err);
     }
     throw err;
   }
